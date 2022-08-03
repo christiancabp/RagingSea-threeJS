@@ -1,95 +1,217 @@
-import './style.css'
-import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import * as dat from 'lil-gui'
+import './style.css';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import * as dat from 'lil-gui';
 
+import waterVertexShader from './shaders/water/vertex.glsl';
+import waterFragmentShader from './shaders/water/fragment.glsl';
 /**
  * Base
  */
 // Debug
-const gui = new dat.GUI({ width: 340 })
+const gui = new dat.GUI({ width: 340 });
+
+const debugObject = {};
 
 // Canvas
-const canvas = document.querySelector('canvas.webgl')
+const canvas = document.querySelector('canvas.webgl');
 
 // Scene
-const scene = new THREE.Scene()
+const scene = new THREE.Scene();
 
 /**
  * Water
  */
 // Geometry
-const waterGeometry = new THREE.PlaneGeometry(2, 2, 128, 128)
+const waterGeometry = new THREE.PlaneGeometry(6, 6, 512, 512);
+
+// Color
+debugObject.depthColor = '#005cb3';
+debugObject.surfaceColor = '#94c2ff';
 
 // Material
-const waterMaterial = new THREE.MeshBasicMaterial()
+const waterMaterial = new THREE.ShaderMaterial({
+  vertexShader: waterVertexShader,
+  fragmentShader: waterFragmentShader,
+  uniforms: {
+    uTime: { value: 0 },
+
+    uBigWavesElevation: { value: 0.35 },
+    uBigWavesFrequency: { value: new THREE.Vector2(2, 1) },
+    uBigWavesSpeed: { value: 0.8 },
+
+    uSmallWavesElevation: { value: 0.3 },
+    uSmallWavesFrequency: { value: 2 },
+    uSmallWavesSpeed: { value: 1 },
+    uSmallWavesIterations: { value: 3 },
+
+    uDepthColor: { value: new THREE.Color(debugObject.depthColor) },
+    uSurfaceColor: { value: new THREE.Color(debugObject.surfaceColor) },
+    uColorOffset: { value: 0.2 },
+    uColorMultiplier: { value: 2.5 },
+  },
+});
+
+/**
+ * Controls GUI
+ */
+gui
+  .add(waterMaterial.uniforms.uBigWavesElevation, 'value')
+  .min(0)
+  .max(1)
+  .step(0.001)
+  .name('Uniform BigWaves Elevation');
+
+gui
+  .add(waterMaterial.uniforms.uBigWavesFrequency.value, 'x')
+  .min(0)
+  .max(10)
+  .step(0.001)
+  .name('Uniform BigWaves Frequency x');
+
+gui
+  .add(waterMaterial.uniforms.uBigWavesFrequency.value, 'y')
+  .min(0)
+  .max(10)
+  .step(0.001)
+  .name('Uniform BigWaves Frequency y');
+
+gui
+  .add(waterMaterial.uniforms.uBigWavesSpeed, 'value')
+  .min(0)
+  .max(5)
+  .step(0.001)
+  .name('Uniform BigWaves Speed');
+
+gui
+  .add(waterMaterial.uniforms.uSmallWavesElevation, 'value')
+  .min(0)
+  .max(1)
+  .step(0.001)
+  .name('Uniform SmallWaves Elevation');
+
+gui
+  .add(waterMaterial.uniforms.uSmallWavesFrequency, 'value')
+  .min(0)
+  .max(30)
+  .step(0.001)
+  .name('Uniform SmallWaves Frequency');
+
+gui
+  .add(waterMaterial.uniforms.uSmallWavesSpeed, 'value')
+  .min(0)
+  .max(4)
+  .step(0.001)
+  .name('Uniform SmallWaves Speed');
+
+gui
+  .add(waterMaterial.uniforms.uSmallWavesIterations, 'value')
+  .min(0)
+  .max(8)
+  .step(1)
+  .name('PERLIN NOISE Uniform SmallWaves layers');
+
+gui
+  .addColor(debugObject, 'depthColor')
+  .name('Depth Color')
+  .onChange(() => {
+    waterMaterial.uniforms.uDepthColor.value.set(debugObject.depthColor);
+  });
+gui
+  .addColor(debugObject, 'surfaceColor')
+  .name('Surface Color')
+  .onChange(() => {
+    waterMaterial.uniforms.uSurfaceColor.value.set(debugObject.surfaceColor);
+  });
+
+gui
+  .add(waterMaterial.uniforms.uColorOffset, 'value')
+  .min(-0.2)
+  .max(1)
+  .step(0.001)
+  .name('Color Offset');
+
+gui
+  .add(waterMaterial.uniforms.uColorMultiplier, 'value')
+  .min(0)
+  .max(10)
+  .step(0.001)
+  .name('Color Multiplier');
 
 // Mesh
-const water = new THREE.Mesh(waterGeometry, waterMaterial)
-water.rotation.x = - Math.PI * 0.5
-scene.add(water)
+const water = new THREE.Mesh(waterGeometry, waterMaterial);
+water.rotation.x = -Math.PI * 0.5;
+scene.add(water);
 
 /**
  * Sizes
  */
 const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-}
+  width: window.innerWidth,
+  height: window.innerHeight,
+};
 
-window.addEventListener('resize', () =>
-{
-    // Update sizes
-    sizes.width = window.innerWidth
-    sizes.height = window.innerHeight
+window.addEventListener('resize', () => {
+  // Update sizes
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
 
-    // Update camera
-    camera.aspect = sizes.width / sizes.height
-    camera.updateProjectionMatrix()
+  // Update camera
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
 
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-})
+  // Update renderer
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
 
 /**
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(1, 1, 1)
-scene.add(camera)
+const camera = new THREE.PerspectiveCamera(
+  75,
+  sizes.width / sizes.height,
+  0.1,
+  100
+);
+camera.position.set(2, 2, 3);
+scene.add(camera);
 
 // Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
 
 /**
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
-})
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  canvas: canvas,
+});
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 /**
  * Animate
  */
-const clock = new THREE.Clock()
+const clock = new THREE.Clock();
 
-const tick = () =>
-{
-    const elapsedTime = clock.getElapsedTime()
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
 
-    // Update controls
-    controls.update()
+  // Animating big waves
+  waterMaterial.uniforms.uTime.value = elapsedTime;
 
-    // Render
-    renderer.render(scene, camera)
+  // Update controls
+  controls.update();
 
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
-}
+  // Render
+  renderer.render(scene, camera);
 
-tick()
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+
+console.log('Hey welcome to my website..! ');
